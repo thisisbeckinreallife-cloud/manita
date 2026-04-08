@@ -2,6 +2,8 @@ import { listProjects, getProject } from "@/server/projects";
 import { getTask } from "@/server/tasks";
 import { listMessagesForTask } from "@/server/messages";
 import { listAttachmentsForTask } from "@/server/attachments";
+import { listConnectionsForOwner } from "@/server/connections";
+import { getCurrentSelectionForTask } from "@/server/selections";
 import { FarLeftRail } from "./FarLeftRail";
 import { LeftRail } from "./LeftRail";
 import { CenterPane } from "./CenterPane";
@@ -14,25 +16,34 @@ export async function Shell({
   projectId?: string;
   taskId?: string;
 }) {
-  const projects = await listProjects();
+  const [projects, connections] = await Promise.all([
+    listProjects(),
+    listConnectionsForOwner(),
+  ]);
   const selectedProject = projectId ? await getProject(projectId) : null;
   const selectedTask = taskId ? await getTask(taskId) : null;
-  const [messages, attachments] = taskId
+  const [messages, attachments, currentSelection] = taskId
     ? await Promise.all([
         listMessagesForTask(taskId),
         listAttachmentsForTask(taskId),
+        getCurrentSelectionForTask(taskId),
       ])
-    : [[], []];
+    : [[], [], null];
 
   return (
     <div className="grid h-full w-full grid-cols-[64px_320px_1fr_360px] bg-ink-950">
       <FarLeftRail projects={projects} selectedId={projectId} />
-      <LeftRail project={selectedProject} selectedTaskId={taskId} />
+      <LeftRail
+        project={selectedProject}
+        selectedTaskId={taskId}
+        connections={connections}
+      />
       <CenterPane
         project={selectedProject}
         task={selectedTask}
         messages={messages}
         attachments={attachments}
+        currentSelection={currentSelection}
       />
       <RightPane project={selectedProject} />
     </div>

@@ -1,10 +1,12 @@
 import type { TaskRecord } from "@/server/tasks";
 import type { MessageRecord } from "@/server/messages";
 import type { AttachmentRecord } from "@/server/attachments";
+import type { SelectionRecord } from "@/server/selections";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { AttachmentList } from "@/components/attachments/AttachmentList";
 import { AttachmentUploader } from "@/components/attachments/AttachmentUploader";
+import { ModelSelector } from "@/components/providers/ModelSelector";
 
 type ProjectHeader = { id: string; name: string; description: string | null } | null;
 
@@ -13,11 +15,13 @@ export function CenterPane({
   task,
   messages,
   attachments,
+  currentSelection,
 }: {
   project: ProjectHeader;
   task: TaskRecord | null;
   messages: MessageRecord[];
   attachments: AttachmentRecord[];
+  currentSelection: SelectionRecord | null;
 }) {
   if (!project) {
     return (
@@ -81,6 +85,13 @@ export function CenterPane({
           <AttachmentUploader taskId={task.id} />
         </div>
         <AttachmentList attachments={attachments} />
+      </section>
+
+      <section className="flex items-center justify-between border-b border-ink-800 px-6 py-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+          Model
+        </p>
+        <ModelSelector taskId={task.id} current={currentSelection} />
       </section>
 
       <ChatThread messages={messages} />

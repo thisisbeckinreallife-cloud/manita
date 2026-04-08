@@ -2,6 +2,9 @@ import Link from "next/link";
 import { CreateProjectForm } from "@/components/projects/CreateProjectForm";
 import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
 import { CreateTaskForm } from "@/components/tasks/CreateTaskForm";
+import { CreateConnectionForm } from "@/components/providers/CreateConnectionForm";
+import { ConnectionList } from "@/components/providers/ConnectionList";
+import type { ConnectionRecord } from "@/server/connections";
 
 type FolderWithTasks = {
   id: string;
@@ -18,9 +21,11 @@ type ProjectWithFolders = {
 export function LeftRail({
   project,
   selectedTaskId,
+  connections,
 }: {
   project: ProjectWithFolders;
   selectedTaskId?: string;
+  connections: ConnectionRecord[];
 }) {
   if (!project) {
     return (
@@ -30,11 +35,22 @@ export function LeftRail({
             New project
           </h2>
         </header>
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <p className="mb-3 text-xs text-ink-400">
-            Create a project to spin up its folders, tasks, and chat workspace.
-          </p>
-          <CreateProjectForm />
+        <div className="flex-1 overflow-y-auto">
+          <section className="border-b border-ink-800 px-4 py-4">
+            <p className="mb-3 text-xs text-ink-400">
+              Create a project to spin up its folders, tasks, and chat workspace.
+            </p>
+            <CreateProjectForm />
+          </section>
+          <section className="px-4 py-4">
+            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+              Provider connections
+            </h3>
+            <CreateConnectionForm />
+            <div className="mt-4">
+              <ConnectionList connections={connections} />
+            </div>
+          </section>
         </div>
       </aside>
     );
