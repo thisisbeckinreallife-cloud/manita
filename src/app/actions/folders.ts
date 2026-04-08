@@ -3,20 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { createFolder } from "@/server/folders";
-
-export type CreateFolderActionState = {
-  error: string | null;
-  fieldErrors: Record<string, string[] | undefined> | null;
-  // Monotonic counter incremented on every successful submission. The
-  // client form watches this to reset its inputs after a create.
-  succeededAt: number;
-};
-
-export const initialCreateFolderState: CreateFolderActionState = {
-  error: null,
-  fieldErrors: null,
-  succeededAt: 0,
-};
+import type { CreateFolderActionState } from "./folders.state";
 
 export async function createFolderAction(
   prev: CreateFolderActionState,

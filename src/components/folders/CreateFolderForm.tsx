@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  createFolderAction,
-  initialCreateFolderState,
-} from "@/app/actions/folders";
+import { createFolderAction } from "@/app/actions/folders";
+import { initialCreateFolderState } from "@/app/actions/folders.state";
 
 export function CreateFolderForm({ projectId }: { projectId: string }) {
   const [state, formAction] = useFormState(createFolderAction, initialCreateFolderState);

@@ -1,10 +1,8 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  setSelectionAction,
-  initialSetSelectionState,
-} from "@/app/actions/selections";
+import { setSelectionAction } from "@/app/actions/selections";
+import { initialSetSelectionState } from "@/app/actions/selections.state";
 import { listAllProviderModelPairs } from "@/lib/domain/providers";
 import type { SelectionRecord } from "@/server/selections";
 
@@ -39,6 +37,11 @@ export function ModelSelector({
       </label>
       <div className="flex items-center gap-2">
         <select
+          // Re-mount the select whenever the persisted snapshot changes so
+          // the new defaultValue takes effect. Without this key the React
+          // component instance survives the route revalidate and the DOM
+          // <select> keeps the previous value (defaultValue is mount-only).
+          key={current?.id ?? "no-selection"}
           id={`model-selector-${taskId}`}
           name="pair"
           defaultValue={currentValue}

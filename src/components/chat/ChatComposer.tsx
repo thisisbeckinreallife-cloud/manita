@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  createMessageAction,
-  initialCreateMessageState,
-} from "@/app/actions/messages";
+import { createMessageAction } from "@/app/actions/messages";
+import { initialCreateMessageState } from "@/app/actions/messages.state";
 
 export function ChatComposer({ taskId }: { taskId: string }) {
   const [state, formAction] = useFormState(createMessageAction, initialCreateMessageState);

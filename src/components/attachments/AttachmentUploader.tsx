@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  createAttachmentAction,
-  initialCreateAttachmentState,
-} from "@/app/actions/attachments";
+import { createAttachmentAction } from "@/app/actions/attachments";
+import { initialCreateAttachmentState } from "@/app/actions/attachments.state";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/validation/attachment";
 
 export function AttachmentUploader({ taskId }: { taskId: string }) {

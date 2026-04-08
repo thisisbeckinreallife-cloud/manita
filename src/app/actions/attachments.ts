@@ -3,20 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { createAttachment } from "@/server/attachments";
-
-export type CreateAttachmentActionState = {
-  error: string | null;
-  fieldErrors: Record<string, string[] | undefined> | null;
-  // Monotonic counter incremented on every successful upload so the
-  // uploader form can reset its file input.
-  succeededAt: number;
-};
-
-export const initialCreateAttachmentState: CreateAttachmentActionState = {
-  error: null,
-  fieldErrors: null,
-  succeededAt: 0,
-};
+import type { CreateAttachmentActionState } from "./attachments.state";
 
 export async function createAttachmentAction(
   prev: CreateAttachmentActionState,

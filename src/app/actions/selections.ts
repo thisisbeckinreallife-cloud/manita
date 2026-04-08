@@ -3,18 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { setSelectionForTask } from "@/server/selections";
-
-export type SetSelectionActionState = {
-  error: string | null;
-  fieldErrors: Record<string, string[] | undefined> | null;
-  succeededAt: number;
-};
-
-export const initialSetSelectionState: SetSelectionActionState = {
-  error: null,
-  fieldErrors: null,
-  succeededAt: 0,
-};
+import type { SetSelectionActionState } from "./selections.state";
 
 export async function setSelectionAction(
   prev: SetSelectionActionState,

@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import {
-  createConnectionAction,
-  initialCreateConnectionState,
-} from "@/app/actions/connections";
+import { createConnectionAction } from "@/app/actions/connections";
+import { initialCreateConnectionState } from "@/app/actions/connections.state";
 import { PROVIDER_CATALOG } from "@/lib/domain/providers";
 
 export function CreateConnectionForm() {
