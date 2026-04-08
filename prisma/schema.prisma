@@ -64,9 +64,26 @@ model Task {
   folderId String
   folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
 
-  messages TaskMessage[]
+  messages    TaskMessage[]
+  attachments TaskAttachment[]
 
   @@index([folderId])
+}
+
+model TaskAttachment {
+  id         String   @id @default(cuid())
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  // Opaque key returned by the storage adapter (never the original
+  // filename — that lives in `filename` for display only).
+  storageKey String
+  createdAt  DateTime @default(now())
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }
 
 model TaskMessage {

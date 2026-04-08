@@ -1,7 +1,10 @@
 import type { TaskRecord } from "@/server/tasks";
 import type { MessageRecord } from "@/server/messages";
+import type { AttachmentRecord } from "@/server/attachments";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { AttachmentList } from "@/components/attachments/AttachmentList";
+import { AttachmentUploader } from "@/components/attachments/AttachmentUploader";
 
 type ProjectHeader = { id: string; name: string; description: string | null } | null;
 
@@ -9,10 +12,12 @@ export function CenterPane({
   project,
   task,
   messages,
+  attachments,
 }: {
   project: ProjectHeader;
   task: TaskRecord | null;
   messages: MessageRecord[];
+  attachments: AttachmentRecord[];
 }) {
   if (!project) {
     return (
@@ -67,6 +72,17 @@ export function CenterPane({
         </div>
         <StatusBadge status={task.status} />
       </header>
+
+      <section className="flex flex-col gap-2 border-b border-ink-800 px-6 py-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+            Attachments
+          </p>
+          <AttachmentUploader taskId={task.id} />
+        </div>
+        <AttachmentList attachments={attachments} />
+      </section>
+
       <ChatThread messages={messages} />
       <ChatComposer taskId={task.id} />
     </main>
