@@ -34,6 +34,7 @@ export class StubTaskRunner implements TaskRunnerAdapter {
         `stub runner: no-op completion using ${input.provider}/${input.model}`,
         `stub runner: ${input.messageCount} message(s) in context at trigger time`,
       ],
+      assistantMessage: null,
     };
   }
 }

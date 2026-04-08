@@ -15,6 +15,7 @@ describe("StubTaskRunner", () => {
     expect(result.logs.length).toBeGreaterThan(0);
     expect(result.logs.join(" ")).toContain("anthropic/claude-opus-4-6");
     expect(result.logs.join(" ")).toContain("3 message");
+    expect(result.assistantMessage).toBeNull();
     expect(runner.calls).toHaveLength(1);
   });
 

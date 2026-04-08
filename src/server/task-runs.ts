@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getTaskRunnerAdapter, TaskRunnerError } from "@/lib/task-runner";
+import type { RunTaskAssistantMessage } from "@/lib/task-runner/adapter";
 import { requestTaskRunInput } from "@/lib/validation/task-run";
 import {
   assertTaskRunStatus,
@@ -104,6 +105,11 @@ export async function requestTaskRun(rawInput: unknown): Promise<CreatedTaskRun>
     select: SELECT_RUN,
   });
 
+  // Capture the real start-of-execution timestamp so slow (real)
+  // provider calls surface honest durations in the UI instead of
+  // startedAt == finishedAt from the stub-runner days.
+  const startedAt = new Date();
+
   // Phase 1: call the runner. Only TaskRunnerError is captured; anything
   // else re-throws so the DB-phase catch labels it INTERNAL_ERROR.
   let runnerError: TaskRunnerError | null = null;
@@ -131,6 +137,7 @@ export async function requestTaskRun(rawInput: unknown): Promise<CreatedTaskRun>
       return await persistRunnerFailure({
         runId: initialRow.id,
         targetProjectId: task.folder.projectId,
+        startedAt,
         errorCode: runnerError.code,
         errorDetail: runnerError.detail,
       });
@@ -140,13 +147,17 @@ export async function requestTaskRun(rawInput: unknown): Promise<CreatedTaskRun>
     }
     return await persistRunnerSuccess({
       runId: initialRow.id,
+      taskId: input.taskId,
       targetProjectId: task.folder.projectId,
+      startedAt,
       status: runnerResult.status,
+      assistantMessage: runnerResult.assistantMessage,
     });
   } catch (error) {
     return persistInternalFailure({
       runId: initialRow.id,
       targetProjectId: task.folder.projectId,
+      startedAt,
       error,
     });
   }
@@ -154,41 +165,66 @@ export async function requestTaskRun(rawInput: unknown): Promise<CreatedTaskRun>
 
 async function persistRunnerSuccess(args: {
   runId: string;
+  taskId: string;
   targetProjectId: string;
+  startedAt: Date;
   status: TaskRunStatus;
+  assistantMessage: RunTaskAssistantMessage | null;
 }): Promise<CreatedTaskRun> {
-  const { runId, targetProjectId, status } = args;
-  const now = new Date();
-  // The stub runner is synchronous, so the terminal state is reached in
-  // one tick. startedAt/finishedAt are set together.
-  const updated = await db.taskRun.update({
+  const { runId, taskId, targetProjectId, startedAt, status, assistantMessage } = args;
+  const finishedAt = new Date();
+
+  // Atomic: if the runner produced an assistant message, create the
+  // TaskMessage row AND update the TaskRun row in a single transaction
+  // so the UI never renders a DONE run without its corresponding reply
+  // (or, on failure, the reverse).
+  const runUpdate = db.taskRun.update({
     where: { id: runId },
     data: {
       status,
-      startedAt: now,
-      finishedAt: now,
+      startedAt,
+      finishedAt,
       errorCode: null,
       errorDetail: null,
     },
     select: SELECT_RUN,
   });
+
+  if (assistantMessage) {
+    const [, updated] = await db.$transaction([
+      db.taskMessage.create({
+        data: {
+          taskId,
+          role: "ASSISTANT",
+          kind: "TEXT",
+          content: assistantMessage.content,
+        },
+        select: { id: true },
+      }),
+      runUpdate,
+    ]);
+    return { ...narrow(updated), projectId: targetProjectId };
+  }
+
+  const updated = await runUpdate;
   return { ...narrow(updated), projectId: targetProjectId };
 }
 
 async function persistRunnerFailure(args: {
   runId: string;
   targetProjectId: string;
+  startedAt: Date;
   errorCode: string;
   errorDetail: string | null;
 }): Promise<CreatedTaskRun> {
-  const { runId, targetProjectId, errorCode, errorDetail } = args;
-  const now = new Date();
+  const { runId, targetProjectId, startedAt, errorCode, errorDetail } = args;
+  const finishedAt = new Date();
   const updated = await db.taskRun.update({
     where: { id: runId },
     data: {
       status: "FAILED",
-      startedAt: now,
-      finishedAt: now,
+      startedAt,
+      finishedAt,
       errorCode,
       errorDetail,
     },
@@ -200,19 +236,20 @@ async function persistRunnerFailure(args: {
 async function persistInternalFailure(args: {
   runId: string;
   targetProjectId: string;
+  startedAt: Date;
   error: unknown;
 }): Promise<CreatedTaskRun> {
-  const { runId, targetProjectId, error } = args;
+  const { runId, targetProjectId, startedAt, error } = args;
   const detail =
     error instanceof Error ? error.message : "Unknown internal error";
-  const now = new Date();
+  const finishedAt = new Date();
   try {
     const updated = await db.taskRun.update({
       where: { id: runId },
       data: {
         status: "FAILED",
-        startedAt: now,
-        finishedAt: now,
+        startedAt,
+        finishedAt,
         errorCode: "INTERNAL_ERROR",
         errorDetail: detail,
       },
