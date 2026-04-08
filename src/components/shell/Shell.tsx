@@ -4,6 +4,7 @@ import { listMessagesForTask } from "@/server/messages";
 import { listAttachmentsForTask } from "@/server/attachments";
 import { listConnectionsForOwner } from "@/server/connections";
 import { getCurrentSelectionForTask } from "@/server/selections";
+import { getRepositoryLinkForProject } from "@/server/repository-links";
 import { FarLeftRail } from "./FarLeftRail";
 import { LeftRail } from "./LeftRail";
 import { CenterPane } from "./CenterPane";
@@ -20,7 +21,12 @@ export async function Shell({
     listProjects(),
     listConnectionsForOwner(),
   ]);
-  const selectedProject = projectId ? await getProject(projectId) : null;
+  const [selectedProject, repositoryLink] = projectId
+    ? await Promise.all([
+        getProject(projectId),
+        getRepositoryLinkForProject(projectId),
+      ])
+    : [null, null];
   const selectedTask = taskId ? await getTask(taskId) : null;
   const [messages, attachments, currentSelection] = taskId
     ? await Promise.all([
@@ -45,7 +51,7 @@ export async function Shell({
         attachments={attachments}
         currentSelection={currentSelection}
       />
-      <RightPane project={selectedProject} />
+      <RightPane project={selectedProject} repositoryLink={repositoryLink} />
     </div>
   );
 }

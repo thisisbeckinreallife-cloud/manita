@@ -34,7 +34,8 @@ model Project {
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  folders Folder[]
+  folders        Folder[]
+  repositoryLink RepositoryLink?
 
   @@index([ownerId])
 }
@@ -106,6 +107,38 @@ model ModelProviderConnection {
   selections ModelSelectionSnapshot[]
 
   @@index([ownerId])
+}
+
+// One-per-project link to an external repository (MVP: GitHub only). The
+// model distinguishes *requested* state (what the user asked for) from
+// *observed* state (what the provider confirmed), because the pack forbids
+// faking progress. Status transitions: REQUESTED -> OBSERVED or FAILED.
+// Canonical status values live in src/lib/domain/repository-link-status.ts.
+model RepositoryLink {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  provider String @default("github")
+
+  // Requested state — filled when the user kicks off the bootstrap flow.
+  requestedOwner   String
+  requestedName    String
+  requestedPrivate Boolean @default(true)
+  requestedAt      DateTime @default(now())
+
+  // Observed state — filled after the provider confirms the repo exists.
+  observedOwner String?
+  observedName  String?
+  observedUrl   String?
+  observedAt    DateTime?
+
+  status      String  @default("REQUESTED")
+  errorCode   String?
+  errorDetail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Append-only history of (provider, model) chosen for a given task. The
