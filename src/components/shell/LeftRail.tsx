@@ -1,12 +1,27 @@
+import Link from "next/link";
 import { CreateProjectForm } from "@/components/projects/CreateProjectForm";
+import { CreateFolderForm } from "@/components/folders/CreateFolderForm";
+import { CreateTaskForm } from "@/components/tasks/CreateTaskForm";
+
+type FolderWithTasks = {
+  id: string;
+  name: string;
+  tasks: Array<{ id: string; title: string; status: string }>;
+};
 
 type ProjectWithFolders = {
   id: string;
   name: string;
-  folders: Array<{ id: string; name: string; tasks: Array<{ id: string; title: string }> }>;
+  folders: FolderWithTasks[];
 } | null;
 
-export function LeftRail({ project }: { project: ProjectWithFolders }) {
+export function LeftRail({
+  project,
+  selectedTaskId,
+}: {
+  project: ProjectWithFolders;
+  selectedTaskId?: string;
+}) {
   if (!project) {
     return (
       <aside className="flex h-full flex-col border-r border-ink-800 bg-ink-900">
@@ -32,29 +47,45 @@ export function LeftRail({ project }: { project: ProjectWithFolders }) {
           {project.name}
         </h2>
       </header>
+
+      <div className="border-b border-ink-800 px-4 py-3">
+        <CreateFolderForm projectId={project.id} />
+      </div>
+
       <div className="flex-1 overflow-y-auto px-2 py-3">
         {project.folders.length === 0 ? (
-          <div className="px-3 py-2">
-            <p className="text-xs text-ink-400">
-              No folders yet. Folder &amp; task creation lands in the next slice.
-            </p>
-          </div>
+          <p className="px-3 py-2 text-xs text-ink-400">
+            No folders yet. Create one above to start adding tasks.
+          </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {project.folders.map((folder) => (
               <li key={folder.id}>
                 <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
                   {folder.name}
                 </p>
                 <ul className="flex flex-col">
-                  {folder.tasks.map((task) => (
-                    <li
-                      key={task.id}
-                      className="cursor-default rounded-md px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-800"
-                    >
-                      {task.title}
-                    </li>
-                  ))}
+                  {folder.tasks.map((task) => {
+                    const active = task.id === selectedTaskId;
+                    return (
+                      <li key={task.id}>
+                        <Link
+                          href={`/projects/${project.id}/tasks/${task.id}`}
+                          className={`flex items-center justify-between rounded-md px-3 py-1.5 text-sm transition ${
+                            active
+                              ? "bg-accent/15 text-ink-100"
+                              : "text-ink-200 hover:bg-ink-800"
+                          }`}
+                        >
+                          <span className="truncate">{task.title}</span>
+                          <StatusDot status={task.status} />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  <li className="pt-0.5">
+                    <CreateTaskForm folderId={folder.id} />
+                  </li>
                 </ul>
               </li>
             ))}
@@ -63,4 +94,16 @@ export function LeftRail({ project }: { project: ProjectWithFolders }) {
       </div>
     </aside>
   );
+}
+
+function StatusDot({ status }: { status: string }) {
+  const color =
+    status === "DONE"
+      ? "bg-ok"
+      : status === "IN_PROGRESS"
+        ? "bg-warn"
+        : status === "ARCHIVED"
+          ? "bg-ink-500"
+          : "bg-ink-400";
+  return <span className={`ml-2 h-1.5 w-1.5 shrink-0 rounded-full ${color}`} />;
 }

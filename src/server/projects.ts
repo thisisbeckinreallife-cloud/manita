@@ -18,6 +18,13 @@ export async function listProjects(): Promise<ProjectListItem[]> {
   });
 }
 
+/**
+ * Returns the project with ALL of its folders (and each folder's tasks)
+ * embedded. The `folders` include must remain unfiltered: the route guard at
+ * `src/app/projects/[id]/tasks/[taskId]/page.tsx` derives the set of valid
+ * folder IDs from this result and 404s tasks whose folder is missing. Adding
+ * a `where` or `take` here will silently turn legitimate tasks into 404s.
+ */
 export async function getProject(id: string) {
   return db.project.findUnique({
     where: { id },
