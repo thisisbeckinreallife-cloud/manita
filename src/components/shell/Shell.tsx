@@ -5,6 +5,11 @@ import { listAttachmentsForTask } from "@/server/attachments";
 import { listConnectionsForOwner } from "@/server/connections";
 import { getCurrentSelectionForTask } from "@/server/selections";
 import { getRepositoryLinkForProject } from "@/server/repository-links";
+import { getDeployTargetForProject } from "@/server/deploy-targets";
+import {
+  getLatestRunForProject,
+  getPreviewEndpointForProject,
+} from "@/server/deploy-runs";
 import { FarLeftRail } from "./FarLeftRail";
 import { LeftRail } from "./LeftRail";
 import { CenterPane } from "./CenterPane";
@@ -21,12 +26,21 @@ export async function Shell({
     listProjects(),
     listConnectionsForOwner(),
   ]);
-  const [selectedProject, repositoryLink] = projectId
+  const [
+    selectedProject,
+    repositoryLink,
+    deployTarget,
+    latestRun,
+    previewEndpoint,
+  ] = projectId
     ? await Promise.all([
         getProject(projectId),
         getRepositoryLinkForProject(projectId),
+        getDeployTargetForProject(projectId),
+        getLatestRunForProject(projectId),
+        getPreviewEndpointForProject(projectId),
       ])
-    : [null, null];
+    : [null, null, null, null, null];
   const selectedTask = taskId ? await getTask(taskId) : null;
   const [messages, attachments, currentSelection] = taskId
     ? await Promise.all([
@@ -51,7 +65,13 @@ export async function Shell({
         attachments={attachments}
         currentSelection={currentSelection}
       />
-      <RightPane project={selectedProject} repositoryLink={repositoryLink} />
+      <RightPane
+        project={selectedProject}
+        repositoryLink={repositoryLink}
+        deployTarget={deployTarget}
+        latestRun={latestRun}
+        previewEndpoint={previewEndpoint}
+      />
     </div>
   );
 }

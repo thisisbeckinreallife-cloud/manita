@@ -36,6 +36,7 @@ model Project {
 
   folders        Folder[]
   repositoryLink RepositoryLink?
+  deployTarget   DeployTarget?
 
   @@index([ownerId])
 }
@@ -139,6 +140,87 @@ model RepositoryLink {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// One-per-project deploy target (MVP: Railway only). The user pastes
+// the Railway project/service/environment identifiers from the Railway
+// dashboard; auto-creation of services is a later slice.
+model DeployTarget {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  provider String @default("railway")
+
+  railwayProjectId     String
+  railwayServiceId     String
+  railwayEnvironmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs            DeployRun[]
+  previewEndpoint PreviewEndpoint?
+}
+
+// Append-only deploy run. Status lifecycle canonicalized in
+// src/lib/domain/deploy-run-status.ts:
+//   REQUESTED -> BUILDING -> DEPLOYING -> LIVE | FAILED
+// Slice 3 drives it synchronously: the adapter decides the terminal
+// state in a single round-trip. Background reconcile is a later slice.
+model DeployRun {
+  id       String @id @default(cuid())
+  targetId String
+  target   DeployTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  status String @default("REQUESTED")
+
+  commitSha String?
+  branch    String?
+
+  // External identifier returned by the provider (Railway deployment id).
+  externalId String?
+
+  requestedAt DateTime  @default(now())
+  observedAt  DateTime?
+  finishedAt  DateTime?
+
+  errorCode   String?
+  errorDetail String?
+
+  events DeployEvent[]
+
+  @@index([targetId, requestedAt])
+}
+
+// Append-only log of status transitions + messages for a deploy run.
+// Kinds canonicalized in src/lib/domain/deploy-event-kind.ts.
+model DeployEvent {
+  id    String    @id @default(cuid())
+  runId String
+  run   DeployRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  kind    String
+  message String
+  // Optional JSON payload (stored as text in SQLite).
+  payload String?
+
+  createdAt DateTime @default(now())
+
+  @@index([runId, createdAt])
+}
+
+// Current preview URL for a target. Updated only when a run reaches LIVE
+// with a non-null URL; failed runs leave the prior preview untouched so
+// the UI can honestly label it "stale".
+model PreviewEndpoint {
+  id       String @id @default(cuid())
+  targetId String @unique
+  target   DeployTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  url        String
+  observedAt DateTime @default(now())
+  lastRunId  String?
 }
 
 // Append-only history of (provider, model) chosen for a given task. The

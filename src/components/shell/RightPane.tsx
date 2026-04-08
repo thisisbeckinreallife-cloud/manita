@@ -1,14 +1,36 @@
 import type { RepositoryLinkRecord } from "@/server/repository-links";
+import type { DeployTargetRecord } from "@/server/deploy-targets";
+import type {
+  DeployEventRecord,
+  DeployRunRecord,
+} from "@/server/deploy-runs";
 import { RequestBootstrapForm } from "@/components/repository/RequestBootstrapForm";
+import { LinkDeployTargetForm } from "@/components/deploy/LinkDeployTargetForm";
+import { TriggerDeployButton } from "@/components/deploy/TriggerDeployButton";
+import { DeployEventList } from "@/components/deploy/DeployEventList";
 
 type ProjectHeader = { id: string; name: string } | null;
+
+type LatestRun = (DeployRunRecord & { events: DeployEventRecord[] }) | null;
+
+type PreviewEndpointRecord = {
+  url: string;
+  observedAt: Date;
+  lastRunId: string | null;
+} | null;
 
 export function RightPane({
   project,
   repositoryLink,
+  deployTarget,
+  latestRun,
+  previewEndpoint,
 }: {
   project: ProjectHeader;
   repositoryLink: RepositoryLinkRecord | null;
+  deployTarget: DeployTargetRecord | null;
+  latestRun: LatestRun;
+  previewEndpoint: PreviewEndpointRecord;
 }) {
   return (
     <aside className="flex h-full flex-col border-l border-ink-800 bg-ink-900">
@@ -16,30 +38,42 @@ export function RightPane({
         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-300">
           Operational truth
         </h2>
-        <StatusPill repositoryLink={repositoryLink} project={project} />
+        <HeaderStatusPill
+          project={project}
+          repositoryLink={repositoryLink}
+          latestRun={latestRun}
+        />
       </header>
       <div className="flex flex-col gap-4 overflow-y-auto px-4 py-4 text-sm">
         <Section label="Repository">
           <RepositorySection project={project} link={repositoryLink} />
         </Section>
         <Section label="Deploy target">
-          <Empty>
-            {project ? "No deploy target linked" : "Select a project"}
-          </Empty>
+          <DeployTargetSection project={project} target={deployTarget} />
         </Section>
         <Section label="Last deploy">
-          <Empty>No deploys yet</Empty>
+          <LastDeploySection
+            project={project}
+            target={deployTarget}
+            run={latestRun}
+          />
         </Section>
         <Section label="Preview">
-          <Empty>Preview unavailable</Empty>
+          <PreviewSection
+            target={deployTarget}
+            run={latestRun}
+            preview={previewEndpoint}
+          />
         </Section>
         <Section label="Recent events">
-          <Empty>No events recorded</Empty>
+          <EventsSection run={latestRun} target={deployTarget} />
         </Section>
       </div>
     </aside>
   );
 }
+
+// ---------- sections ----------
 
 function RepositorySection({
   project,
@@ -48,27 +82,22 @@ function RepositorySection({
   project: ProjectHeader;
   link: RepositoryLinkRecord | null;
 }) {
-  if (!project) {
-    return <Empty>Select a project</Empty>;
-  }
+  if (!project) return <Empty>Select a project</Empty>;
   if (!link) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-xs text-ink-400">No repository linked</p>
         <RequestBootstrapForm
           projectId={project.id}
-          defaultName={toRepoSlug(project.id)}
+          defaultName={`vibe-${project.id.slice(-8).toLowerCase()}`}
         />
       </div>
     );
   }
-
   if (link.status === "OBSERVED" && link.observedUrl) {
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-[10px] uppercase tracking-wider text-ok">
-          Observed
-        </p>
+        <p className="text-[10px] uppercase tracking-wider text-ok">Observed</p>
         <a
           href={link.observedUrl}
           target="_blank"
@@ -83,7 +112,6 @@ function RepositorySection({
       </div>
     );
   }
-
   if (link.status === "FAILED") {
     return (
       <div className="flex flex-col gap-2">
@@ -111,11 +139,7 @@ function RepositorySection({
       </div>
     );
   }
-
-  // REQUESTED (fallback) — the synchronous flow normally transitions
-  // immediately to OBSERVED or FAILED, so seeing REQUESTED means a request
-  // is mid-flight or the server was killed between the upsert and the
-  // provider call.
+  // REQUESTED fallback.
   return (
     <div className="flex flex-col gap-1.5">
       <p className="text-[10px] uppercase tracking-wider text-warn">Requested</p>
@@ -129,47 +153,161 @@ function RepositorySection({
   );
 }
 
-function StatusPill({
-  repositoryLink,
+function DeployTargetSection({
   project,
+  target,
 }: {
-  repositoryLink: RepositoryLinkRecord | null;
   project: ProjectHeader;
+  target: DeployTargetRecord | null;
 }) {
-  if (!project) {
+  if (!project) return <Empty>Select a project</Empty>;
+  if (!target) {
     return (
-      <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-300">
-        idle
-      </span>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-ink-400">No deploy target linked</p>
+        <LinkDeployTargetForm projectId={project.id} />
+      </div>
     );
   }
-  if (!repositoryLink) {
-    return (
-      <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-300">
-        unlinked
-      </span>
-    );
-  }
-  const palette: Record<string, string> = {
-    REQUESTED: "bg-warn/15 text-warn",
-    OBSERVED: "bg-ok/15 text-ok",
-    FAILED: "bg-bad/15 text-bad",
-  };
-  const cls = palette[repositoryLink.status] ?? "bg-ink-800 text-ink-300";
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${cls}`}
-    >
-      {repositoryLink.status.toLowerCase()}
-    </span>
+    <details className="flex flex-col gap-1">
+      <summary className="cursor-pointer text-xs text-ink-200">
+        {target.provider} · {target.railwayServiceId}
+      </summary>
+      <dl className="mt-2 flex flex-col gap-1 text-[11px] text-ink-400">
+        <Row label="Project" value={target.railwayProjectId} />
+        <Row label="Service" value={target.railwayServiceId} />
+        <Row
+          label="Environment"
+          value={target.railwayEnvironmentId ?? "(unset)"}
+        />
+        <Row label="Linked" value={formatDate(target.updatedAt)} />
+      </dl>
+      <div className="mt-2">
+        <LinkDeployTargetForm
+          projectId={project.id}
+          defaults={{
+            railwayProjectId: target.railwayProjectId,
+            railwayServiceId: target.railwayServiceId,
+            railwayEnvironmentId: target.railwayEnvironmentId,
+          }}
+        />
+      </div>
+    </details>
   );
 }
+
+function LastDeploySection({
+  project,
+  target,
+  run,
+}: {
+  project: ProjectHeader;
+  target: DeployTargetRecord | null;
+  run: LatestRun;
+}) {
+  if (!project) return <Empty>Select a project</Empty>;
+  if (!target) return <Empty>Link a deploy target first</Empty>;
+  if (!run) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-ink-400">No deploys yet</p>
+        <TriggerDeployButton projectId={project.id} />
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <RunStatusPill status={run.status} />
+        <p className="text-[10px] text-ink-500">
+          {formatDate(run.requestedAt)}
+        </p>
+      </div>
+      {run.branch || run.commitSha ? (
+        <p className="text-[11px] text-ink-400">
+          {run.branch ?? "(branch unset)"}
+          {run.commitSha ? ` · ${run.commitSha.slice(0, 7)}` : ""}
+        </p>
+      ) : null}
+      {run.status === "FAILED" ? (
+        <>
+          <p className="break-words text-[11px] text-bad">
+            {run.errorCode ?? "RAILWAY_UNKNOWN_ERROR"}
+          </p>
+          {run.errorDetail ? (
+            <p className="break-words text-[11px] text-ink-400">
+              {run.errorDetail}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      <TriggerDeployButton projectId={project.id} />
+    </div>
+  );
+}
+
+function PreviewSection({
+  target,
+  run,
+  preview,
+}: {
+  target: DeployTargetRecord | null;
+  run: LatestRun;
+  preview: PreviewEndpointRecord;
+}) {
+  if (!target) return <Empty>Preview unavailable</Empty>;
+  if (!preview) return <Empty>Preview unavailable</Empty>;
+  const isStale =
+    (run !== null && run.status === "FAILED") ||
+    (run !== null && run.id !== preview.lastRunId);
+  return (
+    <div className="flex flex-col gap-1">
+      <p
+        className={`text-[10px] uppercase tracking-wider ${
+          isStale ? "text-warn" : "text-ok"
+        }`}
+      >
+        {isStale ? "Stale" : "Live"}
+      </p>
+      <a
+        href={preview.url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="break-all text-xs font-medium text-ink-100 underline decoration-ink-700 underline-offset-2 hover:decoration-accent"
+      >
+        {preview.url}
+      </a>
+      <p className="text-[10px] text-ink-500">
+        Observed {formatDate(preview.observedAt)}
+      </p>
+    </div>
+  );
+}
+
+function EventsSection({
+  run,
+  target,
+}: {
+  run: LatestRun;
+  target: DeployTargetRecord | null;
+}) {
+  if (!target) return <Empty>No events recorded</Empty>;
+  if (!run) return <Empty>No events recorded</Empty>;
+  return <DeployEventList events={run.events} />;
+}
+
+// ---------- primitives ----------
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">{label}</p>
-      <div className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2">{children}</div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+        {label}
+      </p>
+      <div className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2">
+        {children}
+      </div>
     </section>
   );
 }
@@ -178,7 +316,77 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-ink-400">{children}</p>;
 }
 
-function formatDate(value: Date | null): string {
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <dt className="text-[10px] uppercase tracking-wider text-ink-500">
+        {label}
+      </dt>
+      <dd className="truncate text-ink-300">{value}</dd>
+    </div>
+  );
+}
+
+function HeaderStatusPill({
+  project,
+  repositoryLink,
+  latestRun,
+}: {
+  project: ProjectHeader;
+  repositoryLink: RepositoryLinkRecord | null;
+  latestRun: LatestRun;
+}) {
+  if (!project) return <Pill tone="idle">idle</Pill>;
+  if (latestRun) {
+    const tone =
+      latestRun.status === "LIVE"
+        ? "ok"
+        : latestRun.status === "FAILED"
+          ? "bad"
+          : "warn";
+    return <Pill tone={tone}>{latestRun.status.toLowerCase()}</Pill>;
+  }
+  if (repositoryLink) {
+    const tone =
+      repositoryLink.status === "OBSERVED"
+        ? "ok"
+        : repositoryLink.status === "FAILED"
+          ? "bad"
+          : "warn";
+    return <Pill tone={tone}>{repositoryLink.status.toLowerCase()}</Pill>;
+  }
+  return <Pill tone="idle">unlinked</Pill>;
+}
+
+function RunStatusPill({ status }: { status: DeployRunRecord["status"] }) {
+  const tone =
+    status === "LIVE" ? "ok" : status === "FAILED" ? "bad" : "warn";
+  return <Pill tone={tone}>{status.toLowerCase()}</Pill>;
+}
+
+function Pill({
+  tone,
+  children,
+}: {
+  tone: "ok" | "bad" | "warn" | "idle";
+  children: React.ReactNode;
+}) {
+  const palette: Record<string, string> = {
+    ok: "bg-ok/15 text-ok",
+    bad: "bg-bad/15 text-bad",
+    warn: "bg-warn/15 text-warn",
+    idle: "bg-ink-800 text-ink-300",
+  };
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${palette[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function formatDate(value: Date | null | undefined): string {
   if (!value) return "";
   return value.toLocaleString(undefined, {
     month: "short",
@@ -186,10 +394,4 @@ function formatDate(value: Date | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function toRepoSlug(projectId: string): string {
-  // Strip the cuid prefix to give the form a friendlier default. The user
-  // can overwrite it before submitting.
-  return `vibe-${projectId.slice(-8).toLowerCase()}`;
 }
