@@ -1,4 +1,8 @@
 import type { MessageRecord } from "@/server/messages";
+import { MessageBubble } from "./MessageBubble";
+import { ToolCallCard } from "./ToolCallCard";
+import { ToolResultCard } from "./ToolResultCard";
+import { PlanBlock } from "./PlanBlock";
 
 export function ChatThread({ messages }: { messages: MessageRecord[] }) {
   if (messages.length === 0) {
@@ -12,52 +16,60 @@ export function ChatThread({ messages }: { messages: MessageRecord[] }) {
     );
   }
 
+  // Build a tree: a TOOL_RESULT nests under its parent ONLY when (a) the
+  // parent exists in the current list AND (b) the parent is itself a
+  // TOOL_CALL. Any other case (null parent, orphaned reference, parent
+  // of a different kind) falls through to top-level rendering so the
+  // user never silently loses a result. The server also enforces this
+  // invariant on write — see src/server/messages.ts — but we defend in
+  // depth here because the bug is invisible by construction if missed.
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const childrenIndex = new Map<string, MessageRecord[]>();
+  const topLevel: MessageRecord[] = [];
+
+  for (const message of messages) {
+    const parentId = message.parentMessageId;
+    const parent = parentId ? byId.get(parentId) : undefined;
+    const canNest =
+      message.kind === "TOOL_RESULT" && parent?.kind === "TOOL_CALL";
+    if (canNest && parentId) {
+      const list = childrenIndex.get(parentId) ?? [];
+      list.push(message);
+      childrenIndex.set(parentId, list);
+    } else {
+      topLevel.push(message);
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-8 py-6">
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
+      {topLevel.map((message) => (
+        <MessageNode
+          key={message.id}
+          message={message}
+          results={childrenIndex.get(message.id) ?? []}
+        />
       ))}
     </div>
   );
 }
 
-function MessageBubble({ message }: { message: MessageRecord }) {
-  const isUser = message.role === "USER";
-  const isAssistant = message.role === "ASSISTANT";
-
-  return (
-    <article
-      className={`flex max-w-3xl flex-col gap-1 ${
-        isUser ? "ml-auto items-end" : "items-start"
-      }`}
-    >
-      <header className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-          {message.role.toLowerCase()}
-        </span>
-        <time
-          className="text-[10px] text-ink-500"
-          dateTime={message.createdAt.toISOString()}
-        >
-          {message.createdAt.toLocaleString(undefined, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
-      </header>
-      <div
-        className={`whitespace-pre-wrap rounded-lg border px-4 py-2 text-sm ${
-          isUser
-            ? "border-accent/30 bg-accent/10 text-ink-100"
-            : isAssistant
-              ? "border-ink-700 bg-ink-900 text-ink-100"
-              : "border-ink-800 bg-ink-950 text-ink-300"
-        }`}
-      >
-        {message.content}
-      </div>
-    </article>
-  );
+function MessageNode({
+  message,
+  results,
+}: {
+  message: MessageRecord;
+  results: MessageRecord[];
+}) {
+  switch (message.kind) {
+    case "TOOL_CALL":
+      return <ToolCallCard message={message} results={results} />;
+    case "TOOL_RESULT":
+      return <ToolResultCard message={message} />;
+    case "PLAN":
+      return <PlanBlock message={message} />;
+    case "TEXT":
+    default:
+      return <MessageBubble message={message} />;
+  }
 }

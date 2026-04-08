@@ -335,16 +335,31 @@ model ModelSelectionSnapshot {
 model TaskMessage {
   id        String   @id @default(cuid())
   // SQLite does not support Prisma enums; `role` is a string constrained to
-  // MessageRole values (see src/lib/domain/message-role.ts). Slice 1a only
-  // creates USER messages; ASSISTANT/SYSTEM land with provider integration.
+  // MessageRole values (see src/lib/domain/message-role.ts).
   role      String   @default("USER")
+  // Content kind constrained to MessageKind values (see
+  // src/lib/domain/message-kind.ts). Slice 5a adds structured kinds on top
+  // of plain TEXT: PLAN, TOOL_CALL, TOOL_RESULT. Existing rows default to
+  // TEXT and render identically.
+  kind      String   @default("TEXT")
   content   String
+  // Optional JSON-serialized payload. Shape depends on `kind` (see
+  // src/lib/domain/message-kind.ts for the documented shapes).
+  payload   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   taskId String
   task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
+  // Optional self-relation so a TOOL_RESULT row can be nested under its
+  // originating TOOL_CALL. Slice 5a supports one level of nesting; deeper
+  // hierarchies are out of scope.
+  parentMessageId String?
+  parent          TaskMessage?  @relation("MessageThread", fields: [parentMessageId], references: [id], onDelete: Cascade)
+  children        TaskMessage[] @relation("MessageThread")
+
   @@index([taskId])
   @@index([taskId, createdAt])
+  @@index([parentMessageId])
 }

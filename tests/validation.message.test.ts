@@ -9,7 +9,58 @@ describe("createMessageInput", () => {
       expect(result.data.taskId).toBe("t1");
       expect(result.data.content).toBe("Hello");
       expect(result.data.role).toBeUndefined();
+      expect(result.data.kind).toBeUndefined();
+      expect(result.data.payload).toBeUndefined();
+      expect(result.data.parentMessageId).toBeUndefined();
     }
+  });
+
+  it("accepts all structured-message fields", () => {
+    const result = createMessageInput.safeParse({
+      taskId: "t1",
+      content: "grep project",
+      kind: "TOOL_CALL",
+      payload: '{"tool":"grep","command":"grep -n foo src"}',
+      parentMessageId: "parent-1",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.kind).toBe("TOOL_CALL");
+      expect(result.data.payload).toContain("grep -n foo");
+      expect(result.data.parentMessageId).toBe("parent-1");
+    }
+  });
+
+  it("rejects an unknown kind", () => {
+    const result = createMessageInput.safeParse({
+      taskId: "t1",
+      content: "x",
+      kind: "UNKNOWN",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("normalizes empty payload and parentMessageId to undefined", () => {
+    const result = createMessageInput.safeParse({
+      taskId: "t1",
+      content: "x",
+      payload: "",
+      parentMessageId: "   ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.payload).toBeUndefined();
+      expect(result.data.parentMessageId).toBeUndefined();
+    }
+  });
+
+  it("rejects a payload longer than 16000 characters", () => {
+    const result = createMessageInput.safeParse({
+      taskId: "t1",
+      content: "x",
+      payload: "x".repeat(16001),
+    });
+    expect(result.success).toBe(false);
   });
 
   it("trims whitespace from content", () => {
