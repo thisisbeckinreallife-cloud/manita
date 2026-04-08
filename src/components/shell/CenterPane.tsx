@@ -1,13 +1,18 @@
 import type { TaskRecord } from "@/server/tasks";
+import type { MessageRecord } from "@/server/messages";
+import { ChatThread } from "@/components/chat/ChatThread";
+import { ChatComposer } from "@/components/chat/ChatComposer";
 
 type ProjectHeader = { id: string; name: string; description: string | null } | null;
 
 export function CenterPane({
   project,
   task,
+  messages,
 }: {
   project: ProjectHeader;
   task: TaskRecord | null;
+  messages: MessageRecord[];
 }) {
   if (!project) {
     return (
@@ -62,12 +67,8 @@ export function CenterPane({
         </div>
         <StatusBadge status={task.status} />
       </header>
-      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <p className="text-sm text-ink-300">Task workspace shell.</p>
-        <p className="mt-1 text-xs text-ink-400">
-          Chat, attachments, model selection, and run controls land in slice 1.
-        </p>
-      </div>
+      <ChatThread messages={messages} />
+      <ChatComposer taskId={task.id} />
     </main>
   );
 }

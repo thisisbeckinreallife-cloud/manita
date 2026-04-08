@@ -64,5 +64,24 @@ model Task {
   folderId String
   folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
 
+  messages TaskMessage[]
+
   @@index([folderId])
+}
+
+model TaskMessage {
+  id        String   @id @default(cuid())
+  // SQLite does not support Prisma enums; `role` is a string constrained to
+  // MessageRole values (see src/lib/domain/message-role.ts). Slice 1a only
+  // creates USER messages; ASSISTANT/SYSTEM land with provider integration.
+  role      String   @default("USER")
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([taskId, createdAt])
 }
