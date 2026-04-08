@@ -38,6 +38,8 @@ The app reads these at runtime. None of them are committed.
 | `ANTHROPIC_API_KEY_FILE`  | alternative          | Path to a file containing the key (preferred for local dev — see `scripts/set-anthropic-key.py`). |
 | `GITHUB_TOKEN`            | for repo bootstrap   | GitHub PAT for repository-link bootstrap. Missing -> honest `GITHUB_TOKEN_NOT_CONFIGURED` on the repo card. |
 | `RAILWAY_TOKEN`           | for deploy trigger   | Railway API token for deploy-run trigger. Missing -> honest `RAILWAY_TOKEN_NOT_CONFIGURED` on the deploy card. |
+| `BASIC_AUTH_USER`         | when running the built app | Username for the HTTP basic-auth gate in `src/middleware.ts`. The middleware runs in every build — dev and prod. Missing -> every request returns 503 (fail-closed). |
+| `BASIC_AUTH_PASS`         | when running the built app | Password for the basic-auth gate. Same fail-closed behavior as `BASIC_AUTH_USER`. |
 
 For local dev, create a `.env` file at the project root — Prisma reads it
 automatically at runtime, and so does Next.js. At minimum it must contain:
@@ -88,8 +90,10 @@ inline.
 
 This is the minimum posture. Do not skip the "must be private" caveat.
 
-1. **Create a Railway service** pointing at this repo. Let the autodetect
-   emit a Next.js build.
+1. **Create a Railway service** pointing at this repo. Autodetect emits a
+   Next.js build. `railway.json` overrides the start command so every
+   deploy runs `npx prisma migrate deploy && npm start` — new migrations
+   apply automatically on boot.
 2. **Attach a persistent volume** and mount it at `/data` (or wherever you
    prefer). SQLite files do not survive container restarts without a volume.
 3. **Set environment variables** in the Railway UI:
@@ -97,13 +101,18 @@ This is the minimum posture. Do not skip the "must be private" caveat.
    - `ANTHROPIC_API_KEY=...`
    - `GITHUB_TOKEN=...`
    - `RAILWAY_TOKEN=...`
-4. **Run migrations on first boot.** The current `package.json` does not have
-   a postinstall migration hook. You will need to either add a release command
-   (`npx prisma migrate deploy`) or run it manually via `railway run`.
-5. **Keep the URL private.** The app has no auth. Use Railway private
-   networking, a VPN, or put a basic-auth proxy in front. A public URL with
-   this codebase is a lie-by-omission against the honesty contract.
-6. **Backups are manual.** SQLite on a volume means you are responsible for
+   - `BASIC_AUTH_USER=...`
+   - `BASIC_AUTH_PASS=...`
+4. **The basic-auth gate is fail-closed.** `src/middleware.ts` denies every
+   request with 503 if `BASIC_AUTH_USER` or `BASIC_AUTH_PASS` is unset. This
+   is the Path B enforcement of "must be private" — the moment you delete
+   those env vars, the deploy bricks instead of silently exposing the app.
+   Treat it as the only gate and pick a strong password. If Railway has a
+   healthcheck configured against `/`, the 503 will trigger the restart
+   policy (`restartPolicyMaxRetries: 3` in `railway.json`) and the service
+   will go hard-down within seconds — which is intentional, but do not
+   rotate `BASIC_AUTH_PASS` casually.
+5. **Backups are manual.** SQLite on a volume means you are responsible for
    snapshotting the volume. There is no `pg_dump` equivalent built in.
 
 When the day comes that you need a second user, lift the auth + Postgres
