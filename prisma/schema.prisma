@@ -7,11 +7,20 @@ generator client {
 }
 
 datasource db {
-  // SQLite for local dev only — explicit deviation from the pack default
-  // (Postgres). Approved by user during slice-0 planning.
-  // URL hardcoded because the harness blocks writes to .env in this sandbox.
+  // SQLite single-user posture — explicit deviation from the pack
+  // default (Postgres). Approved during slice-0 planning and re-approved
+  // during the Path B deploy-readiness decision: ship single-user with
+  // SQLite on a Railway persistent volume. Real Postgres + session auth
+  // remain deferred (see memory/project_auth_db_deferred.md) until the
+  // product needs a second user.
+  //
+  // The URL is read from DATABASE_URL at runtime so Railway can inject
+  // a volume-backed path (e.g. "file:/data/dev.db"). Local dev sets
+  // DATABASE_URL via .env (or a shell export); the sandbox preview
+  // server sets it via .claude/launch.json because the harness blocks
+  // writes to .env files.
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {
