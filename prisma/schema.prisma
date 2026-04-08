@@ -126,8 +126,42 @@ model Task {
   messages           TaskMessage[]
   attachments        TaskAttachment[]
   selectionSnapshots ModelSelectionSnapshot[]
+  runs               TaskRun[]
 
   @@index([folderId])
+}
+
+// Append-only execution history for a task. Lifecycle canonicalized in
+// src/lib/domain/task-run-status.ts:
+//   REQUESTED -> RUNNING -> DONE | FAILED
+// Slice 4b uses a synchronous stub runner (no real provider calls) that
+// snapshots the current provider/model and message count at trigger time
+// so future runs can be diffed against prior runs.
+model TaskRun {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  status String @default("REQUESTED")
+
+  // Snapshot of the provider/model selection at the moment the run was
+  // requested. Nullable so the run row exists even when no model was
+  // selected (the runner surfaces that as TASK_NO_MODEL_SELECTED).
+  provider String?
+  model    String?
+
+  // Snapshot of the message count at trigger time. Useful for diffing
+  // future runs against a prior baseline.
+  messageCount Int @default(0)
+
+  requestedAt DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  errorCode   String?
+  errorDetail String?
+
+  @@index([taskId, requestedAt])
 }
 
 model TaskAttachment {

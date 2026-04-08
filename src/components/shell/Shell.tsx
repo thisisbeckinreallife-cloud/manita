@@ -13,6 +13,7 @@ import {
 import { listRulesForProject } from "@/server/project-rules";
 import { listContextsForProject } from "@/server/project-contexts";
 import { listSkillReferencesForProject } from "@/server/project-skill-references";
+import { listRunsForTask } from "@/server/task-runs";
 import { FarLeftRail } from "./FarLeftRail";
 import { LeftRail } from "./LeftRail";
 import { CenterPane } from "./CenterPane";
@@ -51,13 +52,14 @@ export async function Shell({
       ])
     : [null, null, null, null, null, [], [], []];
   const selectedTask = taskId ? await getTask(taskId) : null;
-  const [messages, attachments, currentSelection] = taskId
+  const [messages, attachments, currentSelection, taskRuns] = taskId
     ? await Promise.all([
         listMessagesForTask(taskId),
         listAttachmentsForTask(taskId),
         getCurrentSelectionForTask(taskId),
+        listRunsForTask(taskId),
       ])
-    : [[], [], null];
+    : [[], [], null, []];
 
   return (
     <div className="grid h-full w-full grid-cols-[64px_320px_1fr_360px] bg-ink-950">
@@ -73,6 +75,7 @@ export async function Shell({
         messages={messages}
         attachments={attachments}
         currentSelection={currentSelection}
+        taskRuns={taskRuns}
         projectRules={projectRules}
         projectContexts={projectContexts}
         projectSkillRefs={projectSkillRefs}
