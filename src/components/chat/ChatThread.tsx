@@ -10,7 +10,7 @@ export function ChatThread({ messages }: { messages: MessageRecord[] }) {
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
         <p className="text-sm text-ink-300">No messages yet.</p>
         <p className="mt-1 text-xs text-ink-400">
-          Start the conversation in the composer below. Provider replies land in slice 1c.
+          Write a message below and click Send, pick a model, then click Run task.
         </p>
       </div>
     );
