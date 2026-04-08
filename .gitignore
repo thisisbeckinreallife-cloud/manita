@@ -1,0 +1,39 @@
+# dependencies
+node_modules
+.node_modules.*
+.pnpm-store
+
+# next
+.next
+out
+next-env.d.ts
+
+# build
+dist
+build
+tsconfig.tsbuildinfo
+
+# test
+coverage
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# os
+.DS_Store
+
+# editor
+.vscode
+.idea
+
+# logs
+*.log
+
+# claude state
+.claude/state

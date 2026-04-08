@@ -1,0 +1,68 @@
+// Vibe Workspace — slice 0a schema.
+// Only the four entities required to prove the project/folder/task spine.
+// Remaining 13 entities from CLAUDE.md will be added in later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for local dev only — explicit deviation from the pack default
+  // (Postgres). Approved by user during slice-0 planning.
+  // URL hardcoded because the harness blocks writes to .env in this sandbox.
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  folders Folder[]
+
+  @@index([ownerId])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  @@index([projectId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  // SQLite does not support Prisma enums; `status` is a string constrained
+  // to TaskStatus values (see src/lib/domain/task-status.ts).
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  folderId String
+  folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@index([folderId])
+}
