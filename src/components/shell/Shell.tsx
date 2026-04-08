@@ -10,6 +10,9 @@ import {
   getLatestRunForProject,
   getPreviewEndpointForProject,
 } from "@/server/deploy-runs";
+import { listRulesForProject } from "@/server/project-rules";
+import { listContextsForProject } from "@/server/project-contexts";
+import { listSkillReferencesForProject } from "@/server/project-skill-references";
 import { FarLeftRail } from "./FarLeftRail";
 import { LeftRail } from "./LeftRail";
 import { CenterPane } from "./CenterPane";
@@ -32,6 +35,9 @@ export async function Shell({
     deployTarget,
     latestRun,
     previewEndpoint,
+    projectRules,
+    projectContexts,
+    projectSkillRefs,
   ] = projectId
     ? await Promise.all([
         getProject(projectId),
@@ -39,8 +45,11 @@ export async function Shell({
         getDeployTargetForProject(projectId),
         getLatestRunForProject(projectId),
         getPreviewEndpointForProject(projectId),
+        listRulesForProject(projectId),
+        listContextsForProject(projectId),
+        listSkillReferencesForProject(projectId),
       ])
-    : [null, null, null, null, null];
+    : [null, null, null, null, null, [], [], []];
   const selectedTask = taskId ? await getTask(taskId) : null;
   const [messages, attachments, currentSelection] = taskId
     ? await Promise.all([
@@ -64,6 +73,9 @@ export async function Shell({
         messages={messages}
         attachments={attachments}
         currentSelection={currentSelection}
+        projectRules={projectRules}
+        projectContexts={projectContexts}
+        projectSkillRefs={projectSkillRefs}
       />
       <RightPane
         project={selectedProject}

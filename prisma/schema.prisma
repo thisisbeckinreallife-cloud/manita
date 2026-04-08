@@ -37,8 +37,63 @@ model Project {
   folders        Folder[]
   repositoryLink RepositoryLink?
   deployTarget   DeployTarget?
+  rules          ProjectRule[]
+  contexts       ProjectContext[]
+  skillRefs      ProjectSkillReference[]
 
   @@index([ownerId])
+}
+
+// Free-text rules the user attaches to a project. Intended to be
+// surfaced in future AI-assist flows as constraints ("do not use
+// library X", "always add tests"). Slice 4a persists them; downstream
+// slices will inject them into provider calls.
+model ProjectRule {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title String
+  body  String
+  order Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, order])
+}
+
+// Free-text context snippets attached to a project. Same future
+// contract as ProjectRule but distinct semantics (description /
+// background, not constraints).
+model ProjectContext {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  label   String
+  content String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, updatedAt])
+}
+
+// Named references to skills the project relies on. `source` is an
+// optional freeform pointer (URL, path, package name) — slice 4a just
+// stores the metadata, no runtime lookup yet.
+model ProjectSkillReference {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name   String
+  source String?
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
 }
 
 model Folder {

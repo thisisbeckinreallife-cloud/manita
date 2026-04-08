@@ -2,11 +2,15 @@ import type { TaskRecord } from "@/server/tasks";
 import type { MessageRecord } from "@/server/messages";
 import type { AttachmentRecord } from "@/server/attachments";
 import type { SelectionRecord } from "@/server/selections";
+import type { ProjectRuleRecord } from "@/server/project-rules";
+import type { ProjectContextRecord } from "@/server/project-contexts";
+import type { ProjectSkillReferenceRecord } from "@/server/project-skill-references";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { AttachmentList } from "@/components/attachments/AttachmentList";
 import { AttachmentUploader } from "@/components/attachments/AttachmentUploader";
 import { ModelSelector } from "@/components/providers/ModelSelector";
+import { ProjectOverview } from "@/components/project/ProjectOverview";
 
 type ProjectHeader = { id: string; name: string; description: string | null } | null;
 
@@ -16,12 +20,18 @@ export function CenterPane({
   messages,
   attachments,
   currentSelection,
+  projectRules,
+  projectContexts,
+  projectSkillRefs,
 }: {
   project: ProjectHeader;
   task: TaskRecord | null;
   messages: MessageRecord[];
   attachments: AttachmentRecord[];
   currentSelection: SelectionRecord | null;
+  projectRules: ProjectRuleRecord[];
+  projectContexts: ProjectContextRecord[];
+  projectSkillRefs: ProjectSkillReferenceRecord[];
 }) {
   if (!project) {
     return (
@@ -54,12 +64,12 @@ export function CenterPane({
             ) : null}
           </div>
         </header>
-        <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-          <p className="text-sm text-ink-300">No task selected.</p>
-          <p className="mt-1 text-xs text-ink-400">
-            Create a folder and a task in the left rail, then click it to open the workspace.
-          </p>
-        </div>
+        <ProjectOverview
+          projectId={project.id}
+          rules={projectRules}
+          contexts={projectContexts}
+          skillRefs={projectSkillRefs}
+        />
       </main>
     );
   }
