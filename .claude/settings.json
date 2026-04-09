@@ -1,7 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "defaultMode": "bypassPermissions",
-  "disableBypassPermissionsMode": false,
   "plansDirectory": "docs/plans",
   "includeCoAuthoredBy": false,
   "sandbox": {
@@ -11,6 +9,7 @@
     "allowUnsandboxedCommands": true
   },
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
