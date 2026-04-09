@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { createConnection, listConnectionsForOwner } from "@/server/connections";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const connections = await listConnectionsForOwner();
   return NextResponse.json({ connections });
