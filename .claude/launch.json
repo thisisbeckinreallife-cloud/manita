@@ -8,7 +8,9 @@
       "port": 3000,
       "env": {
         "ANTHROPIC_API_KEY_FILE": "/private/tmp/claude/anthropic_key",
-        "DATABASE_URL": "file:./dev.db"
+        "DATABASE_URL": "file:./dev.db",
+        "BASIC_AUTH_USER": "dev",
+        "BASIC_AUTH_PASS": "dev-sandbox-dummy"
       }
     }
   ]
