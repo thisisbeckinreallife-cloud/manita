@@ -40,3 +40,4 @@ uploads/
 
 # claude state
 .claude/state
+.gstack/
