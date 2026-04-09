@@ -8,6 +8,7 @@ import { RequestBootstrapForm } from "@/components/repository/RequestBootstrapFo
 import { LinkDeployTargetForm } from "@/components/deploy/LinkDeployTargetForm";
 import { TriggerDeployButton } from "@/components/deploy/TriggerDeployButton";
 import { DeployEventList } from "@/components/deploy/DeployEventList";
+import { PreviewFrame } from "@/components/deploy/PreviewFrame";
 
 type ProjectHeader = { id: string; name: string } | null;
 
@@ -32,11 +33,15 @@ export function RightPane({
   latestRun: LatestRun;
   previewEndpoint: PreviewEndpointRecord;
 }) {
+  const previewIsStale =
+    previewEndpoint !== null &&
+    ((latestRun !== null && latestRun.status === "FAILED") ||
+      (latestRun !== null && latestRun.id !== previewEndpoint.lastRunId));
   return (
-    <aside className="flex h-full flex-col border-l border-ink-800 bg-ink-900">
+    <aside className="flex h-full min-h-0 flex-col border-l border-ink-800 bg-ink-900">
       <header className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-300">
-          Operational truth
+          Preview
         </h2>
         <HeaderStatusPill
           project={project}
@@ -44,32 +49,90 @@ export function RightPane({
           latestRun={latestRun}
         />
       </header>
-      <div className="flex flex-col gap-4 overflow-y-auto px-4 py-4 text-sm">
-        <Section label="Repository">
-          <RepositorySection project={project} link={repositoryLink} />
-        </Section>
-        <Section label="Deploy target">
-          <DeployTargetSection project={project} target={deployTarget} />
-        </Section>
-        <Section label="Last deploy">
-          <LastDeploySection
-            project={project}
-            target={deployTarget}
-            run={latestRun}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {previewEndpoint ? (
+          <PreviewFrame
+            url={previewEndpoint.url}
+            isStale={previewIsStale}
+            observedAt={previewEndpoint.observedAt}
           />
-        </Section>
-        <Section label="Preview">
-          <PreviewSection
-            target={deployTarget}
-            run={latestRun}
-            preview={previewEndpoint}
-          />
-        </Section>
-        <Section label="Recent events">
-          <EventsSection run={latestRun} target={deployTarget} />
-        </Section>
+        ) : (
+          <PreviewEmptyState project={project} target={deployTarget} run={latestRun} />
+        )}
       </div>
+      <details className="group border-t border-ink-800 bg-ink-900">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink-400 hover:text-ink-200">
+          <span>Operational truth</span>
+          <span className="text-ink-500 transition-transform group-open:rotate-180">
+            <ChevronIcon />
+          </span>
+        </summary>
+        <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto border-t border-ink-800 px-4 py-3 text-sm">
+          <Section label="Repository">
+            <RepositorySection project={project} link={repositoryLink} />
+          </Section>
+          <Section label="Deploy target">
+            <DeployTargetSection project={project} target={deployTarget} />
+          </Section>
+          <Section label="Last deploy">
+            <LastDeploySection
+              project={project}
+              target={deployTarget}
+              run={latestRun}
+            />
+          </Section>
+          <Section label="Recent events">
+            <EventsSection run={latestRun} target={deployTarget} />
+          </Section>
+        </div>
+      </details>
     </aside>
+  );
+}
+
+function PreviewEmptyState({
+  project,
+  target,
+  run,
+}: {
+  project: ProjectHeader;
+  target: DeployTargetRecord | null;
+  run: LatestRun;
+}) {
+  const reason = !project
+    ? "Select a project to see its deploy preview here."
+    : !target
+      ? "Link a Railway deploy target to start publishing this project."
+      : !run
+        ? "No deploys yet. Trigger one from the Operational truth section below."
+        : run.status === "FAILED"
+          ? "The last deploy failed, so there is nothing live to preview. Inspect the error below and retry."
+          : "Waiting for the current deploy to go live.";
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
+        Preview unavailable
+      </p>
+      <p className="max-w-xs text-xs text-ink-400">{reason}</p>
+    </div>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width="10"
+      height="10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6l4 4 4-4" />
+    </svg>
   );
 }
 
@@ -243,44 +306,6 @@ function LastDeploySection({
         </>
       ) : null}
       <TriggerDeployButton projectId={project.id} />
-    </div>
-  );
-}
-
-function PreviewSection({
-  target,
-  run,
-  preview,
-}: {
-  target: DeployTargetRecord | null;
-  run: LatestRun;
-  preview: PreviewEndpointRecord;
-}) {
-  if (!target) return <Empty>Preview unavailable</Empty>;
-  if (!preview) return <Empty>Preview unavailable</Empty>;
-  const isStale =
-    (run !== null && run.status === "FAILED") ||
-    (run !== null && run.id !== preview.lastRunId);
-  return (
-    <div className="flex flex-col gap-1">
-      <p
-        className={`text-[10px] uppercase tracking-wider ${
-          isStale ? "text-warn" : "text-ok"
-        }`}
-      >
-        {isStale ? "Stale" : "Live"}
-      </p>
-      <a
-        href={preview.url}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="break-all text-xs font-medium text-ink-100 underline decoration-ink-700 underline-offset-2 hover:decoration-accent"
-      >
-        {preview.url}
-      </a>
-      <p className="text-[10px] text-ink-500">
-        Observed {formatDate(preview.observedAt)}
-      </p>
     </div>
   );
 }

@@ -89,7 +89,10 @@ export function CenterPane({
             <p className="mt-1 max-w-xl text-xs text-ink-400">{task.description}</p>
           ) : null}
         </div>
-        <StatusBadge status={task.status} />
+        <div className="flex shrink-0 items-center gap-3">
+          <ModelSelector taskId={task.id} current={currentSelection} />
+          <StatusBadge status={task.status} />
+        </div>
       </header>
 
       <section className="flex flex-col gap-2 border-b border-ink-800 px-6 py-3">
@@ -100,13 +103,6 @@ export function CenterPane({
           <AttachmentUploader taskId={task.id} />
         </div>
         <AttachmentList attachments={attachments} />
-      </section>
-
-      <section className="flex items-center justify-between border-b border-ink-800 px-6 py-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-          Model
-        </p>
-        <ModelSelector taskId={task.id} current={currentSelection} />
       </section>
 
       <section className="flex flex-col gap-2 border-b border-ink-800 px-6 py-3">
