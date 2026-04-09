@@ -98,6 +98,12 @@ function constantTimeEqual(a: string, b: string): boolean {
 // auto-forwards the Authorization header from the parent document, and
 // excluding them keeps the static asset path fast and the matcher list
 // readable. /favicon.ico is excluded for the same reason.
+//
+// /api/health is intentionally unauthenticated: it is the probe used by
+// Railway's HTTP healthcheck and by external uptime monitors, so it
+// cannot depend on the single-credential Basic Auth gate. The endpoint
+// itself only exposes {status, db, checkedAt} — no project data, no
+// configuration, no secrets.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health).*)"],
 };
