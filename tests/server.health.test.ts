@@ -12,25 +12,35 @@ describe("checkHealth", () => {
     expect(Number.isNaN(Date.parse(result.checkedAt))).toBe(false);
   });
 
-  it("returns status=degraded with the error message when the db ping throws an Error", async () => {
+  it("returns status=degraded when the db ping throws an Error", async () => {
     const result = await checkHealth(async () => {
       throw new Error("connect ECONNREFUSED");
     });
     expect(result.status).toBe("degraded");
     expect(result.db).toBe("error");
-    if (result.status === "degraded") {
-      expect(result.error).toBe("connect ECONNREFUSED");
-    }
+    expect(typeof result.checkedAt).toBe("string");
   });
 
-  it("stringifies non-Error thrown values in the error field", async () => {
+  it("returns status=degraded for non-Error thrown values too", async () => {
     const result = await checkHealth(async () => {
       // eslint-disable-next-line @typescript-eslint/no-throw-literal
       throw "string error";
     });
     expect(result.status).toBe("degraded");
-    if (result.status === "degraded") {
-      expect(result.error).toBe("string error");
-    }
+    expect(result.db).toBe("error");
+  });
+
+  it("does not leak the raw error message onto the public result shape", async () => {
+    const result = await checkHealth(async () => {
+      throw new Error(
+        "password authentication failed for user \"vibe\" on host 10.0.0.5:5432",
+      );
+    });
+    // The public shape has no `error` field — anything that would have
+    // been the Prisma/pg message must be absent from the JSON body the
+    // route handler serializes.
+    expect(result).not.toHaveProperty("error");
+    expect(JSON.stringify(result)).not.toContain("10.0.0.5");
+    expect(JSON.stringify(result)).not.toContain("password authentication");
   });
 });

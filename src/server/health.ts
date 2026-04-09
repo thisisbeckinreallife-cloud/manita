@@ -10,16 +10,19 @@
  * The caller injects the db ping so this function can be unit-tested
  * without a real Prisma client and so the route handler controls the
  * actual query strategy.
+ *
+ * The HealthResult shape is the exact payload that the public endpoint
+ * serializes to the client. It intentionally does NOT carry the raw
+ * database error message: Prisma/pg errors can include infra
+ * fingerprints (host, port, user, database name) that should not be
+ * exposed on an unauthenticated URL. The route handler is responsible
+ * for logging the real error server-side before the ping callback
+ * re-throws into this function.
  */
 
 export type HealthResult =
   | { status: "ok"; db: "ok"; checkedAt: string }
-  | {
-      status: "degraded";
-      db: "error";
-      error: string;
-      checkedAt: string;
-    };
+  | { status: "degraded"; db: "error"; checkedAt: string };
 
 export async function checkHealth(
   pingDb: () => Promise<void>,
@@ -28,9 +31,7 @@ export async function checkHealth(
   try {
     await pingDb();
     return { status: "ok", db: "ok", checkedAt };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error);
-    return { status: "degraded", db: "error", error: message, checkedAt };
+  } catch {
+    return { status: "degraded", db: "error", checkedAt };
   }
 }

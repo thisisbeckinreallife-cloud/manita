@@ -104,6 +104,12 @@ function constantTimeEqual(a: string, b: string): boolean {
 // cannot depend on the single-credential Basic Auth gate. The endpoint
 // itself only exposes {status, db, checkedAt} — no project data, no
 // configuration, no secrets.
+//
+// The exemption is anchored with `$` so it matches ONLY the exact path
+// `/api/health`, never a prefix. `/api/healthz`, `/api/health-debug`,
+// and `/api/health/foo` all still hit the Basic Auth gate. If a future
+// slice legitimately needs nested paths under /api/health/*, the
+// matcher must be widened consciously, not accidentally.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/health$).*)"],
 };
