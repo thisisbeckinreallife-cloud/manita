@@ -8,7 +8,7 @@
     "enabled": true,
     "failIfUnavailable": false,
     "autoAllowBashIfSandboxed": false,
-    "allowUnsandboxedCommands": false
+    "allowUnsandboxedCommands": true
   },
   "permissions": {
     "deny": [
